@@ -12,10 +12,8 @@
 */
 
 Route::get('/', [
-    'as' => 'image.index',
-    function () {
-        return view('pages.index');
-    },
+    'as'   => 'image.index',
+    'uses' => 'PageController@index',
 ]);
 
 Route::group(['prefix' => 'image'], function () {
@@ -37,5 +35,20 @@ Route::group(['prefix' => 'image'], function () {
     Route::delete('mass-delete', [
         'as'   => 'image.mass.delete',
         'uses' => 'ImageController@massDelete',
+    ]);
+
+    Route::get('mass-statistics', [
+        'as'   => 'image.mass.statistics',
+        'uses' => 'ImageController@massStatistics',
+    ]);
+
+    Route::get('mass-stat-result/{fileName?}', [
+        'as'   => 'mass.stat.result',
+        'uses' => 'ImageController@massStatisticsResult',
+    ]);
+
+    Route::get('show/{file?}', [
+        'as'   => 'image.show',
+        'uses' => 'PageController@show',
     ]);
 });

@@ -5,9 +5,9 @@
         @include('includes.alerts')
     </div>
     <div class="row">
-        @foreach(Storage::disk('images')->allFiles() as $file)
+        @foreach($images as $file)
             <div class="col-lg-3 col-md-4 col-xs-6 thumb" data-file="{{$file}}">
-                <a class="thumbnail" href="#">
+                <a class="thumbnail" href="{{route('image.show', ['file' => $file])}}">
                     <img class="img-responsive" src="/images/{{$file}}">
                 </a>
                 <div class="btn-group">

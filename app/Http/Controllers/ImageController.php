@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Cartalyst\Alerts\Laravel\Facades\Alert;
-use Illuminate\Http\Request;
-
+use App\Helpers\ImageFile;
 use App\Http\Requests;
+use Carbon\Carbon;
+use Dmg\Helpers\Path;
+use Dmg\Managers\StatisticsManager;
+use Dmg\Tests\Test;
+use Illuminate\Http\Request;
 use Storage;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -63,6 +66,10 @@ class ImageController extends Controller
         return redirect()->route('image.index');
     }
 
+    /**
+     * Удаление всех файлов
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function massDelete()
     {
         try {
@@ -77,5 +84,80 @@ class ImageController extends Controller
         }
 
         return response()->json(count(Storage::disk('images')->allFiles()));
+    }
+
+    /**
+     *
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function massStatistics()
+    {
+        try {
+            $start = Carbon::now();
+            //Получение всех цветов из карты
+            $colorMap = Test::testColorMap();
+            $statManager = new StatisticsManager($colorMap);
+            $colorMapStatistics = $statManager->colorsFrequency(22);
+            $commonStat = array_fill_keys(array_keys($colorMapStatistics), 0);
+
+            //только картинки
+            $images = ImageFile::onlyImageFile(Storage::disk('images')->allFiles());
+
+            //подсчет статистики
+            foreach ($images as $imageFile) {
+                $statManager = new StatisticsManager(Path::images($imageFile));
+                $imageStat = $statManager->colorsFrequency(120, $colorMap);
+
+                foreach ($imageStat as $color => $value) {
+                    $commonStat[ $color ] += $value;
+                }
+            }
+
+            //записываем в файл
+            $fileName = preg_replace('@[ ]@', '_', Carbon::now()->toDateTimeString())
+                . "-files_count-" . count($images);
+            foreach ($commonStat as $color => $value) {
+                Storage::disk('statistics')->append($fileName, $color . ' ' . $value);
+            }
+
+            //отправляем ответ
+            $message = 'Обработано ' . count($images) . ' файлов. Затрачено времени: '
+                . Carbon::now()->diffInSeconds($start) . ' сек';
+
+            \Alert::success($message);
+
+            return redirect()->back();
+        } catch (\Exception $e) {
+            \Alert::error($e->getMessage());
+
+            return redirect()->back();
+        }
+    }
+
+    /**
+     * Выводит общую статистику
+     * @param Request $request
+     * @param null $fileName
+     * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse|\Symfony\Component\HttpFoundation\Response
+     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
+     */
+    public function massStatisticsResult(Request $request, $fileName = null)
+    {
+        if (!$fileName) {
+            $message = 'Нужно указать название файла статистики';
+            if ($request->ajax()) {
+                return response()->json($message, 400);
+            }
+            \Alert::error($message);
+
+            return redirect()->back();
+        }
+        $colors = array_map(function ($line) {
+            return explode(' ', trim($line));
+        }, file(storage_path('app/images_statistics/' . $fileName)));
+
+        return view('includes.mass_stat_result', [
+            'colors' => $colors,
+        ])->render();
     }
 }

@@ -66,6 +66,11 @@ return [
             'visibility' => 'public',
         ],
 
+        'statistics' => [
+            'driver' => 'local',
+            'root' => storage_path('app/images_statistics'),
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => 'your-key',
