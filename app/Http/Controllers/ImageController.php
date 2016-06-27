@@ -6,6 +6,7 @@ use App\Helpers\ImageFile;
 use App\Http\Requests;
 use Carbon\Carbon;
 use Dmg\Helpers\Path;
+use Dmg\Image\Image;
 use Dmg\Managers\StatisticsManager;
 use Dmg\Tests\Test;
 use Illuminate\Http\Request;
@@ -87,7 +88,7 @@ class ImageController extends Controller
     }
 
     /**
-     *
+     * Формирование статистики для всех файлов
      * @return \Illuminate\Http\RedirectResponse
      */
     public function massStatistics()
@@ -159,5 +160,50 @@ class ImageController extends Controller
         return view('includes.mass_stat_result', [
             'colors' => $colors,
         ])->render();
+    }
+
+    /**
+     * Уменьшение изображения
+     * @param Request $request
+     * @param $file
+     * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\JsonResponse|\Symfony\Component\HttpFoundation\Response
+     */
+    public function reduceImage(Request $request, $file)
+    {
+        if (!$request->ajax()) {
+            return response('', 404);
+        }
+        if (!Storage::disk('images')->exists($file)) {
+            $message = 'Файла ' . $file . ' не существует';
+
+            return response()->json($message, 400);
+        }
+
+        try {
+            $image = new Image(Path::images($file));
+            $path = $image->reduce($request->get('boxAmount'))->save(Path::results('reduced-' . $file));
+
+            return response()->json('/images_after_edit/reduced-' . $file);
+        } catch (\Exception $e) {
+            return response()->json($e->getMessage(), 500);
+        }
+    }
+
+    public function remapImage(Request $request, $file)
+    {
+        $colorMap = Test::testColorMap();
+        if ($request->hasFile('colorMap')) {
+            $colorMap = $request->file('colorMap')->getPathname();
+        }
+
+        try {
+            $image = new Image(Path::images($file));
+            $fileName = 'remap-' . $file;
+            $image->remap($colorMap)->save(Path::results($fileName));
+
+            return response()->json('/images_after_edit/' . $fileName);
+        } catch (\Exception $e) {
+            return response()->json($e->getMessage(), 500);
+        }
     }
 }

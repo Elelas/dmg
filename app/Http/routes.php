@@ -51,4 +51,14 @@ Route::group(['prefix' => 'image'], function () {
         'as'   => 'image.show',
         'uses' => 'PageController@show',
     ]);
+
+    Route::get('reduce/{file?}', [
+        'as'   => 'image.reduce',
+        'uses' => 'ImageController@reduceImage',
+    ]);
+
+    Route::post('remap/{file}', [
+        'as'   => 'image.remap',
+        'uses' => 'ImageController@remapImage',
+    ]);
 });
